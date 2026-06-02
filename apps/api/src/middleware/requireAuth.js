@@ -1,8 +1,14 @@
+const crypto = require('crypto');
 const { supabase, pool } = require('../config/db');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 const logger = require('../utils/logger');
 const env = require('../config/env');
+
+function stringToUuid(str) {
+  const hash = crypto.createHash('md5').update(str).digest('hex');
+  return `${hash.substring(0, 8)}-${hash.substring(8, 12)}-${hash.substring(12, 16)}-${hash.substring(16, 20)}-${hash.substring(20, 32)}`;
+}
 
 const requireAuth = asyncHandler(async (req, res, next) => {
   let token;
@@ -31,7 +37,7 @@ const requireAuth = asyncHandler(async (req, res, next) => {
 
     if (identifier.includes('@')) {
       email = identifier;
-      authUserId = 'mock-auth-id-' + identifier.replace(/[^a-zA-Z0-9]/g, '');
+      authUserId = stringToUuid(identifier);
       mockName = identifier.split('@')[0];
     } else {
       // Default mock users
