@@ -39,18 +39,12 @@ export default function PaymentPreviewPage() {
         const previewRes = await api.payments.getRewardPreview(orderId, false);
         setCalculation(previewRes.data);
         
-        // We can fetch shop details to display names
-        // In our API we also return shop info from initiateFromQr. Let's query initiate with a mock token or load shop name directly
-        // Since we are loading order preview, let's query shop details
-        const shopRes = await api.shops.getNearby(12.934, 77.624, 20); // standard query
-        const matchedShop = shopRes.data.shops.find(s => s.is_active === true) || { name: 'Local Shop', redeem_points_per_rupee: 10, upi_id: '7349417848@upi' };
-        
         setOrder({
           orderId,
-          shopName: matchedShop.name,
+          shopName: previewRes.data.shopName || 'Local Shop',
           amount: previewRes.data.remainingUpi,
-          redeemRate: matchedShop.redeem_points_per_rupee,
-          upiId: matchedShop.upi_id || '7349417848@upi'
+          redeemRate: previewRes.data.redeemRate || 10,
+          upiId: previewRes.data.upiId || '7349417848@upi'
         });
       } catch (err) {
         setError(err.message || 'Failed to fetch bill details. Bill may have expired.');

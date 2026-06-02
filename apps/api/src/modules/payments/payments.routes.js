@@ -246,7 +246,7 @@ router.post('/payment/reward-preview', requireAuth, asyncHandler(async (req, res
 
   // Fetch shop rules
   const shopRes = await pool.query(
-    'SELECT redeem_points_per_rupee FROM public.shops WHERE id = $1',
+    'SELECT id, name, redeem_points_per_rupee, upi_id FROM public.shops WHERE id = $1',
     [transaction.shop_id]
   );
 
@@ -275,6 +275,10 @@ router.post('/payment/reward-preview', requireAuth, asyncHandler(async (req, res
       rewardDiscount,
       pointsToRedeem,
       remainingUpi,
+      shopId: shop.id,
+      shopName: shop.name,
+      upiId: shop.upi_id || '7349417848@upi',
+      redeemRate: shop.redeem_points_per_rupee,
       paymentMode: rewardDiscount === 0
         ? 'normal_upi'
         : remainingUpi === 0
