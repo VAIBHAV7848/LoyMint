@@ -44,7 +44,7 @@ export default function PaymentPreviewPage() {
           shopName: previewRes.data.shopName || 'Local Shop',
           amount: previewRes.data.remainingUpi,
           redeemRate: previewRes.data.redeemRate || 10,
-          upiId: previewRes.data.upiId || '7349417848@upi'
+          upiId: previewRes.data.upiId || '7349417848@ybl'
         });
       } catch (err) {
         setError(err.message || 'Failed to fetch bill details. Bill may have expired.');

@@ -172,7 +172,7 @@ router.post('/merchant/shop', requireAuth, requireRole('shopkeeper'), asyncHandl
            upi_id = $8
        WHERE id = $9
        RETURNING *`,
-      [name, address, category, earnPointsPer100, redeemPointsPerRupee, finalLng, finalLat, upiId || '7349417848@upi', shopId]
+      [name, address, category, earnPointsPer100, redeemPointsPerRupee, finalLng, finalLat, upiId || '7349417848@ybl', shopId]
     );
     shop = updateRes.rows[0];
     logger.info(`Updated shop profile for shop: ${shop.id}`);
@@ -184,7 +184,7 @@ router.post('/merchant/shop', requireAuth, requireRole('shopkeeper'), asyncHandl
        VALUES 
         ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography, $6, $7, $8, 4.0, true, $9, now())
        RETURNING *`,
-      [name, category, address, finalLng, finalLat, earnPointsPer100, redeemPointsPerRupee, req.user.id, upiId || '7349417848@upi']
+      [name, category, address, finalLng, finalLat, earnPointsPer100, redeemPointsPerRupee, req.user.id, upiId || '7349417848@ybl']
     );
     shop = insertRes.rows[0];
     logger.info(`Created new shop profile: ${shop.id}`);

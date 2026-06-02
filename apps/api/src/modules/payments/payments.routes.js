@@ -277,7 +277,7 @@ router.post('/payment/reward-preview', requireAuth, asyncHandler(async (req, res
       remainingUpi,
       shopId: shop.id,
       shopName: shop.name,
-      upiId: shop.upi_id || '7349417848@upi',
+      upiId: shop.upi_id || '7349417848@ybl',
       redeemRate: shop.redeem_points_per_rupee,
       paymentMode: rewardDiscount === 0
         ? 'normal_upi'
