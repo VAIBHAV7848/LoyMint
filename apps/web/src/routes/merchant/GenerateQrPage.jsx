@@ -14,6 +14,7 @@ export default function GenerateQrPage() {
   const [qrCodeData, setQrCodeData] = useState(null); // { orderId, qrDataUrl, expiresAt, amount }
   const [timeLeft, setTimeLeft] = useState(0);
   const [txnStatus, setTxnStatus] = useState('pending'); // 'pending', 'success', 'expired'
+  const [verifiedUtr, setVerifiedUtr] = useState('');
   const timerRef = useRef(null);
 
   // Generate QR
@@ -91,6 +92,7 @@ export default function GenerateQrPage() {
                 
                 if (['success', 'partial_paid', 'reward_paid'].includes(transaction.status)) {
                   setTxnStatus('success');
+                  setVerifiedUtr(transaction.razorpay_payment_id || '');
                   setTimeLeft(0); // Stop countdown
                   if (pollInterval) clearInterval(pollInterval);
                 } else if (transaction.status === 'failed') {
@@ -119,6 +121,7 @@ export default function GenerateQrPage() {
             if (thisTxn) {
               if (['success', 'partial_paid', 'reward_paid'].includes(thisTxn.status)) {
                 setTxnStatus('success');
+                setVerifiedUtr(thisTxn.razorpay_payment_id || '');
                 setTimeLeft(0);
                 clearInterval(pollInterval);
               } else if (thisTxn.status === 'failed') {
@@ -149,6 +152,7 @@ export default function GenerateQrPage() {
     setAmount('');
     setTimeLeft(0);
     setTxnStatus('pending');
+    setVerifiedUtr('');
     setError('');
   };
 
@@ -217,10 +221,17 @@ export default function GenerateQrPage() {
             </div>
 
             {/* Status updates */}
-            <div className="text-xs text-slate-400 font-medium">
-              {txnStatus === 'pending' && '🔴 Ready - Customer must scan code'}
-              {txnStatus === 'success' && '🟢 Paid - Account credited!'}
-              {txnStatus === 'expired' && '❌ Expiration limit reached.'}
+            <div className="space-y-2">
+              <div className="text-xs text-slate-400 font-medium">
+                {txnStatus === 'pending' && '🔴 Ready - Customer must scan code'}
+                {txnStatus === 'success' && '🟢 Paid - Account credited!'}
+                {txnStatus === 'expired' && '❌ Expiration limit reached.'}
+              </div>
+              {txnStatus === 'success' && verifiedUtr && (
+                <div className="text-[10px] bg-slate-950 border border-slate-900 rounded-xl px-2 py-1.5 font-mono text-slate-400 inline-block">
+                  UTR Ref: <span className="text-emerald-400 font-extrabold">{verifiedUtr}</span>
+                </div>
+              )}
             </div>
 
             <button

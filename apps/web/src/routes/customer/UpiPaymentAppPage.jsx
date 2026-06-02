@@ -21,6 +21,8 @@ export default function UpiPaymentAppPage() {
   })();
 
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [utr, setUtr] = useState('');
   const [error, setError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentInitiated, setPaymentInitiated] = useState(false);
@@ -29,8 +31,6 @@ export default function UpiPaymentAppPage() {
   
   const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(shopName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(orderId)}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=8b5cf6&bgcolor=0f172a&data=${encodeURIComponent(upiUrl)}`;
-
-  const autoConfirmCalled = useRef(false);
 
   const handleLaunchUpi = () => {
     setPaymentInitiated(true);
@@ -47,28 +47,50 @@ export default function UpiPaymentAppPage() {
     }
   }, [isMobile]);
 
-  // Auto verify when customer returns to browser tab
+  // Check transaction status from server when returning to LoyMint
+  const checkTransactionStatus = async () => {
+    try {
+      const details = await api.payments.getTransactionDetails(orderId);
+      const status = details.data.transaction.status;
+      if (status === 'success' || status === 'partial_paid') {
+        setPaymentSuccess(true);
+        playSuccessSound();
+        setTimeout(() => {
+          navigate(`/customer/payment-preview/${orderId}?status=success`);
+        }, 2000);
+      }
+    } catch (err) {
+      console.warn('Silent status check failed:', err);
+    }
+  };
+
   useEffect(() => {
-    const handleReturnToTab = () => {
-      if (paymentInitiated && !autoConfirmCalled.current && !paymentSuccess) {
-        autoConfirmCalled.current = true;
-        handleVerifyPayment();
+    const handleFocus = () => {
+      if (paymentInitiated && !paymentSuccess) {
+        checkTransactionStatus();
       }
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        handleReturnToTab();
+      if (document.visibilityState === 'visible' && paymentInitiated && !paymentSuccess) {
+        checkTransactionStatus();
       }
     };
 
-    // Listen to focus and visibility changes
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleReturnToTab);
+    window.addEventListener('focus', handleFocus);
+
+    // Poll status every 4 seconds in the background as a backup
+    const pollInterval = setInterval(() => {
+      if (paymentInitiated && !paymentSuccess) {
+        checkTransactionStatus();
+      }
+    }, 4000);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleReturnToTab);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(pollInterval);
     };
   }, [paymentInitiated, paymentSuccess]);
 
@@ -110,29 +132,29 @@ export default function UpiPaymentAppPage() {
     }
   };
 
-  const handleVerifyPayment = async () => {
-    setLoading(true);
+  const handleVerifyPayment = async (e) => {
+    if (e) e.preventDefault();
+    if (!/^\d{12}$/.test(utr.trim())) {
+      setError('Please enter a valid 12-digit UTR number.');
+      return;
+    }
+
+    setVerifying(true);
     setError('');
 
     try {
-      // Simulate verification delay for realistic bank confirmation
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await api.payments.verifyUtr(orderId, utr.trim());
       
-      // Verify payment with server
-      await api.payments.completeMockPayment(orderId, true);
-      
-      setLoading(false);
+      setVerifying(false);
       setPaymentSuccess(true);
       playSuccessSound();
 
-      // Automatically redirect back to LoyMint after 2.5 seconds
       setTimeout(() => {
         navigate(`/customer/payment-preview/${orderId}?status=success`);
-      }, 2500);
+      }, 2000);
     } catch (err) {
-      setLoading(false);
-      autoConfirmCalled.current = false; // allow retry
-      setError(err.message || 'Verification failed. Please try again.');
+      setVerifying(false);
+      setError(err.response?.data?.message || err.message || 'Verification failed. Please check the UTR and try again.');
     }
   };
 
@@ -228,23 +250,56 @@ export default function UpiPaymentAppPage() {
               </div>
             )}
 
-            {/* Manual Verification Button */}
-            <div className="w-full max-w-[280px] space-y-3.5 pt-4">
+            {/* UTR Input Form */}
+            <form onSubmit={handleVerifyPayment} className="w-full max-w-[280px] space-y-4 pt-2">
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block text-left">
+                  Enter 12-Digit UPI Ref No / UTR
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={12}
+                  pattern="\d{12}"
+                  placeholder="e.g. 312345678901"
+                  value={utr}
+                  onChange={(e) => setUtr(e.target.value.replace(/\D/g, '').substring(0, 12))}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-center text-sm font-mono text-white tracking-widest focus:outline-none focus:border-brand"
+                />
+                <p className="text-[9px] text-slate-500 leading-normal text-left">
+                  Locate the 12-digit UTR/Ref No. inside your UPI app transaction details once payment is complete.
+                </p>
+              </div>
+
               {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex items-center gap-2">
+                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-[11px] flex items-center gap-2 text-left">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
 
               <button
-                onClick={handleVerifyPayment}
-                className="w-full bg-gradient-to-r from-brand to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white rounded-xl py-3.5 text-xs font-extrabold shadow-premium transition-all flex items-center justify-center gap-2"
+                type="submit"
+                disabled={verifying || utr.length !== 12}
+                className={`w-full text-white rounded-xl py-3.5 text-xs font-extrabold shadow-premium transition-all flex items-center justify-center gap-2 ${
+                  utr.length === 12 && !verifying
+                    ? 'bg-gradient-to-r from-brand to-violet-600 hover:from-purple-700 hover:to-violet-700'
+                    : 'bg-slate-850 text-slate-550 border border-slate-800/60 cursor-not-allowed'
+                }`}
               >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Verify Payment Manually</span>
+                {verifying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Verifying Transfer...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Submit UTR & Confirm Payment</span>
+                  </>
+                )}
               </button>
-            </div>
+            </form>
           </>
         )}
       </div>

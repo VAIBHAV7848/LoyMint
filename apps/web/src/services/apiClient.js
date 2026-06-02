@@ -89,6 +89,7 @@ export const api = {
       apiClient.post('/payment/reward-only', { orderId, pointsToRedeem }),
     completeMockPayment: (orderId, success) => 
       apiClient.post('/payment/mock-complete', { orderId, success }),
+    verifyUtr: (orderId, utr) => apiClient.post('/payment/verify-utr', { orderId, utr }),
     getTransactionDetails: (orderId) => apiClient.get(`/payment/details/${orderId}`)
   },
 

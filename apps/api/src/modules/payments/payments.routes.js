@@ -774,6 +774,112 @@ router.post('/payment/mock-complete', requireAuth, asyncHandler(async (req, res,
   }
 }));
 
+// 8.5. POST /api/payment/verify-utr - Securely verify a manual UPI UTR transaction reference
+router.post('/payment/verify-utr', requireAuth, asyncHandler(async (req, res, next) => {
+  const { orderId, utr } = req.body;
+
+  if (!utr || !/^\d{12}$/.test(utr)) {
+    return next(new AppError('Please enter a valid 12-digit UTR number.', 400));
+  }
+
+  // Find transaction
+  const txnRes = await pool.query(
+    'SELECT * FROM public.transactions WHERE order_id = $1',
+    [orderId]
+  );
+
+  if (txnRes.rows.length === 0) {
+    return next(new AppError('Transaction not found.', 404));
+  }
+
+  const transaction = txnRes.rows[0];
+
+  if (transaction.status !== 'pending') {
+    return next(new AppError('Transaction is already processed.', 400));
+  }
+
+  // Check if UTR is already used by another transaction
+  const duplicateRes = await pool.query(
+    'SELECT id FROM public.transactions WHERE razorpay_payment_id = $1',
+    [utr]
+  );
+
+  if (duplicateRes.rows.length > 0) {
+    return next(new AppError('This UTR number has already been used for another payment.', 400));
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const shopRes = await client.query(
+      'SELECT earn_points_per_100 FROM public.shops WHERE id = $1',
+      [transaction.shop_id]
+    );
+    const shop = shopRes.rows[0];
+
+    const userRes = await client.query(
+      'SELECT points_balance FROM public.users WHERE id = $1 FOR UPDATE',
+      [transaction.user_id]
+    );
+    const user = userRes.rows[0];
+
+    let newPointsBalance = user.points_balance;
+
+    if (transaction.reward_points_used > 0) {
+      newPointsBalance -= transaction.reward_points_used;
+      await client.query(
+        `INSERT INTO public.points_log (user_id, transaction_id, points_change, reason, created_at)
+         VALUES ($1, $2, $3, 'reward_redeem', now())`,
+        [transaction.user_id, transaction.id, -transaction.reward_points_used]
+      );
+    }
+
+    const pointsEarned = Math.floor(transaction.upi_paid / 100) * shop.earn_points_per_100;
+    if (pointsEarned > 0) {
+      newPointsBalance += pointsEarned;
+      await client.query(
+        `INSERT INTO public.points_log (user_id, transaction_id, points_change, reason, created_at)
+         VALUES ($1, $2, $3, 'purchase', now())`,
+        [transaction.user_id, transaction.id, pointsEarned]
+      );
+    }
+
+    await client.query(
+      'UPDATE public.users SET points_balance = $1 WHERE id = $2',
+      [newPointsBalance, transaction.user_id]
+    );
+
+    const finalStatus = transaction.reward_points_used > 0 ? 'partial_paid' : 'success';
+    const updatedTxnRes = await client.query(
+      `UPDATE public.transactions 
+       SET status = $1, razorpay_payment_id = $2, updated_at = now()
+       WHERE id = $3
+       RETURNING *`,
+      [finalStatus, utr, transaction.id]
+    );
+
+    const updatedTxn = updatedTxnRes.rows[0];
+    await client.query('COMMIT');
+
+    broadcastTransactionUpdate(transaction.shop_id, updatedTxn);
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Payment verified successfully.',
+      data: {
+        transaction: updatedTxn
+      }
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    logger.error('Error verifying UTR payment:', err);
+    return next(err);
+  } finally {
+    client.release();
+  }
+}));
+
 // 9. GET /api/payment/details/:orderId - Retrieve details of any transaction
 router.get('/payment/details/:orderId', requireAuth, asyncHandler(async (req, res, next) => {
   const { orderId } = req.params;
