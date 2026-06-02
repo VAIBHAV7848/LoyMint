@@ -43,13 +43,14 @@ export default function PaymentPreviewPage() {
         // In our API we also return shop info from initiateFromQr. Let's query initiate with a mock token or load shop name directly
         // Since we are loading order preview, let's query shop details
         const shopRes = await api.shops.getNearby(12.934, 77.624, 20); // standard query
-        const matchedShop = shopRes.data.shops.find(s => s.is_active === true) || { name: 'Local Shop', redeem_points_per_rupee: 10 };
+        const matchedShop = shopRes.data.shops.find(s => s.is_active === true) || { name: 'Local Shop', redeem_points_per_rupee: 10, upi_id: 'naikomkar106-1@okhdfcbank' };
         
         setOrder({
           orderId,
           shopName: matchedShop.name,
           amount: previewRes.data.remainingUpi,
-          redeemRate: matchedShop.redeem_points_per_rupee
+          redeemRate: matchedShop.redeem_points_per_rupee,
+          upiId: matchedShop.upi_id || 'naikomkar106-1@okhdfcbank'
         });
       } catch (err) {
         setError(err.message || 'Failed to fetch bill details. Bill may have expired.');
@@ -91,7 +92,7 @@ export default function PaymentPreviewPage() {
         await api.payments.createOrder(orderId, calculation.pointsToRedeem);
         
         // Redirect browser to our simulated UPI Payment App
-        navigate(`/customer/upi-payment-app?orderId=${orderId}&amount=${calculation.remainingUpi}&shopName=${encodeURIComponent(order.shopName)}&points=${calculation.pointsToRedeem}`);
+        navigate(`/customer/upi-payment-app?orderId=${orderId}&amount=${calculation.remainingUpi}&shopName=${encodeURIComponent(order.shopName)}&points=${calculation.pointsToRedeem}&upiId=${encodeURIComponent(order.upiId)}`);
       }
     } catch (err) {
       setError(err.message || 'Payment initiation failed.');

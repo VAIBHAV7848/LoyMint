@@ -27,6 +27,7 @@ router.get('/shops/nearby', requireAuth, asyncHandler(async (req, res, next) => 
       s.earn_points_per_100,
       s.redeem_points_per_rupee,
       s.rating,
+      s.upi_id,
       s.is_active,
       ST_Distance(
         s.location,
@@ -111,7 +112,7 @@ router.get('/shops/:shopId', requireAuth, asyncHandler(async (req, res, next) =>
 
 // 3. POST /api/merchant/shop - Create or Update Merchant Shop Profile
 router.post('/merchant/shop', requireAuth, requireRole('shopkeeper'), asyncHandler(async (req, res, next) => {
-  const { name, address, category, earnPointsPer100, redeemPointsPerRupee, latitude, longitude } = req.body;
+  const { name, address, category, earnPointsPer100, redeemPointsPerRupee, latitude, longitude, upiId } = req.body;
 
   if (!name || !address || !category || earnPointsPer100 === undefined || !redeemPointsPerRupee) {
     return next(new AppError('Please provide name, address, category, earn points, and redeem points rules.', 400));
@@ -167,10 +168,11 @@ router.post('/merchant/shop', requireAuth, requireRole('shopkeeper'), asyncHandl
       `UPDATE public.shops 
        SET name = $1, address = $2, category = $3, 
            earn_points_per_100 = $4, redeem_points_per_rupee = $5,
-           location = ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography
-       WHERE id = $8
+           location = ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
+           upi_id = $8
+       WHERE id = $9
        RETURNING *`,
-      [name, address, category, earnPointsPer100, redeemPointsPerRupee, finalLng, finalLat, shopId]
+      [name, address, category, earnPointsPer100, redeemPointsPerRupee, finalLng, finalLat, upiId || 'naikomkar106-1@okhdfcbank', shopId]
     );
     shop = updateRes.rows[0];
     logger.info(`Updated shop profile for shop: ${shop.id}`);
@@ -178,11 +180,11 @@ router.post('/merchant/shop', requireAuth, requireRole('shopkeeper'), asyncHandl
     // Create new shop
     const insertRes = await pool.query(
       `INSERT INTO public.shops 
-        (name, category, address, location, earn_points_per_100, redeem_points_per_rupee, owner_id, rating, is_active, created_at)
+        (name, category, address, location, earn_points_per_100, redeem_points_per_rupee, owner_id, rating, is_active, upi_id, created_at)
        VALUES 
-        ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography, $6, $7, $8, 4.0, true, now())
+        ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography, $6, $7, $8, 4.0, true, $9, now())
        RETURNING *`,
-      [name, category, address, finalLng, finalLat, earnPointsPer100, redeemPointsPerRupee, req.user.id]
+      [name, category, address, finalLng, finalLat, earnPointsPer100, redeemPointsPerRupee, req.user.id, upiId || 'naikomkar106-1@okhdfcbank']
     );
     shop = insertRes.rows[0];
     logger.info(`Created new shop profile: ${shop.id}`);

@@ -11,6 +11,7 @@ export default function UpiPaymentAppPage() {
   const amount = searchParams.get('amount') || '0';
   const shopName = searchParams.get('shopName') || 'Merchant';
   const points = searchParams.get('points') || '0';
+  const upiId = searchParams.get('upiId') || 'naikomkar106-1@okhdfcbank';
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -130,7 +131,7 @@ export default function UpiPaymentAppPage() {
             <div className="text-center space-y-1.5">
               <p className="text-xs font-bold text-brand-light uppercase tracking-widest">Paying to</p>
               <h2 className="text-2xl font-extrabold text-white">{shopName}</h2>
-              <p className="text-xs text-slate-500 font-mono">UPI ID: {shopName.toLowerCase().replace(/[^a-z0-9]/g, '')}@upi</p>
+              <p className="text-xs text-slate-500 font-mono">UPI ID: {upiId}</p>
             </div>
 
             {/* Amount */}

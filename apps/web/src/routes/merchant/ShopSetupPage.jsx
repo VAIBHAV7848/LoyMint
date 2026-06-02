@@ -13,6 +13,7 @@ export default function ShopSetupPage() {
   const [redeemPointsPerRupee, setRedeemPointsPerRupee] = useState(10);
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
+  const [upiId, setUpiId] = useState('naikomkar106-1@okhdfcbank');
   
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -35,6 +36,7 @@ export default function ShopSetupPage() {
           setCategory(myShop.category);
           setEarnPointsPer100(myShop.earn_points_per_100);
           setRedeemPointsPerRupee(myShop.redeem_points_per_rupee);
+          setUpiId(myShop.upi_id || 'naikomkar106-1@okhdfcbank');
         }
       } catch (err) {
         console.warn('Failed to load existing shop profile:', err);
@@ -58,7 +60,8 @@ export default function ShopSetupPage() {
       earnPointsPer100: parseInt(earnPointsPer100, 10),
       redeemPointsPerRupee: parseInt(redeemPointsPerRupee, 10),
       latitude: latitude ? parseFloat(latitude) : null,
-      longitude: longitude ? parseFloat(longitude) : null
+      longitude: longitude ? parseFloat(longitude) : null,
+      upiId
     };
 
     try {
@@ -124,6 +127,22 @@ export default function ShopSetupPage() {
                 placeholder="e.g. The Ground Bean Cafe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-200 focus:outline-none focus:border-brand-light"
+              />
+            </div>
+          </div>
+
+          {/* UPI ID (VPA) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Merchant UPI ID (VPA)</label>
+            <div className="relative">
+              <Sliders className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                required
+                placeholder="e.g. naikomkar106-1@okhdfcbank"
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-200 focus:outline-none focus:border-brand-light"
               />
             </div>
