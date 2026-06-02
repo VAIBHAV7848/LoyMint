@@ -37,7 +37,7 @@ CREATE TABLE public.shops (
   earn_points_per_100 INTEGER NOT NULL CHECK (earn_points_per_100 >= 0),
   redeem_points_per_rupee INTEGER NOT NULL CHECK (redeem_points_per_rupee > 0),
   rating DECIMAL(2,1) NOT NULL DEFAULT 0 CHECK (rating >= 0 AND rating <= 5),
-  upi_id VARCHAR(100) NOT NULL DEFAULT 'naikomkar106-1@okhdfcbank',
+  upi_id VARCHAR(100) NOT NULL DEFAULT '7349417848@upi',
   owner_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()

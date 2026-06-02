@@ -11,7 +11,7 @@ export default function UpiPaymentAppPage() {
   const amount = searchParams.get('amount') || '0';
   const shopName = searchParams.get('shopName') || 'Merchant';
   const points = searchParams.get('points') || '0';
-  const upiId = searchParams.get('upiId') || 'naikomkar106-1@okhdfcbank';
+  const upiId = searchParams.get('upiId') || '7349417848@upi';
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

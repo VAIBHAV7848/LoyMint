@@ -13,7 +13,7 @@ export default function ShopSetupPage() {
   const [redeemPointsPerRupee, setRedeemPointsPerRupee] = useState(10);
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
-  const [upiId, setUpiId] = useState('naikomkar106-1@okhdfcbank');
+  const [upiId, setUpiId] = useState('7349417848@upi');
   
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -36,7 +36,7 @@ export default function ShopSetupPage() {
           setCategory(myShop.category);
           setEarnPointsPer100(myShop.earn_points_per_100);
           setRedeemPointsPerRupee(myShop.redeem_points_per_rupee);
-          setUpiId(myShop.upi_id || 'naikomkar106-1@okhdfcbank');
+          setUpiId(myShop.upi_id || '7349417848@upi');
         }
       } catch (err) {
         console.warn('Failed to load existing shop profile:', err);
@@ -140,7 +140,7 @@ export default function ShopSetupPage() {
               <input
                 type="text"
                 required
-                placeholder="e.g. naikomkar106-1@okhdfcbank"
+                placeholder="e.g. 7349417848@upi"
                 value={upiId}
                 onChange={(e) => setUpiId(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-200 focus:outline-none focus:border-brand-light"
