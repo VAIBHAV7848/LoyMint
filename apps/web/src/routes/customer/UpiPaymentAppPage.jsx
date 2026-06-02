@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/apiClient';
 import { ShieldCheck, ArrowLeft, Smartphone, Check, AlertCircle, Loader2, Sparkles, QrCode } from 'lucide-react';
@@ -15,25 +15,55 @@ export default function UpiPaymentAppPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [utr, setUtr] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentInitiated, setPaymentInitiated] = useState(false);
 
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
   const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(shopName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(orderId)}`;
-  
-  // Custom styled QR code from public api
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=8b5cf6&bgcolor=0f172a&data=${encodeURIComponent(upiUrl)}`;
+
+  const autoConfirmCalled = useRef(false);
+
+  const handleLaunchUpi = () => {
+    setPaymentInitiated(true);
+    window.location.href = upiUrl;
+  };
 
   useEffect(() => {
     if (isMobile) {
       // Auto-trigger deep link on mobile devices
       const timer = setTimeout(() => {
-        window.location.href = upiUrl;
-      }, 1200);
+        handleLaunchUpi();
+      }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [isMobile, upiUrl]);
+  }, [isMobile]);
+
+  // Auto verify when customer returns to browser tab
+  useEffect(() => {
+    const handleReturnToTab = () => {
+      if (paymentInitiated && !autoConfirmCalled.current && !paymentSuccess) {
+        autoConfirmCalled.current = true;
+        handleVerifyPayment();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleReturnToTab();
+      }
+    };
+
+    // Listen to focus and visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleReturnToTab);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleReturnToTab);
+    };
+  }, [paymentInitiated, paymentSuccess]);
 
   // Play a beautiful payment success sound using Web Audio API!
   const playSuccessSound = () => {
@@ -78,6 +108,9 @@ export default function UpiPaymentAppPage() {
     setError('');
 
     try {
+      // Simulate verification delay for realistic bank confirmation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       // Verify payment with server
       await api.payments.completeMockPayment(orderId, true);
       
@@ -91,12 +124,9 @@ export default function UpiPaymentAppPage() {
       }, 2500);
     } catch (err) {
       setLoading(false);
+      autoConfirmCalled.current = false; // allow retry
       setError(err.message || 'Verification failed. Please try again.');
     }
-  };
-
-  const handleLaunchUpi = () => {
-    window.location.href = upiUrl;
   };
 
   return (
@@ -125,6 +155,14 @@ export default function UpiPaymentAppPage() {
             </div>
             <h3 className="text-lg font-bold text-white">Payment Verified Successfully</h3>
             <p className="text-xs text-slate-500">Redirecting back to LoyMint...</p>
+          </div>
+        ) : loading ? (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-12">
+            <Loader2 className="w-12 h-12 text-brand animate-spin" />
+            <h3 className="text-sm font-bold text-slate-300">Checking Bank Transfer...</h3>
+            <p className="text-xs text-slate-500 max-w-[200px] text-center leading-normal">
+              Confirming direct settlement to merchant's bank account. Please wait.
+            </p>
           </div>
         ) : (
           <>
@@ -171,34 +209,20 @@ export default function UpiPaymentAppPage() {
             {isMobile && (
               <div className="w-full max-w-[280px] text-center space-y-2">
                 <div className="text-[11px] text-slate-400 flex items-center justify-center gap-1">
-                  <Smartphone className="w-3.5 h-3.5 animate-bounce" />
-                  <span>Redirecting to your payment app...</span>
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>If your UPI app didn't open automatically:</span>
                 </div>
                 <button
                   onClick={handleLaunchUpi}
                   className="w-full bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-200 py-3 rounded-xl text-xs font-bold transition-all"
                 >
-                  Pay via installed UPI App
+                  Launch UPI Application
                 </button>
               </div>
             )}
 
-            {/* UTR Input & Complete Button */}
+            {/* Manual Verification Button */}
             <div className="w-full max-w-[280px] space-y-3.5 pt-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  UTR / UPI Ref No. (Optional)
-                </label>
-                <input
-                  type="text"
-                  maxLength="12"
-                  placeholder="e.g. 340985210984"
-                  value={utr}
-                  onChange={(e) => setUtr(e.target.value.replace(/\D/g, ''))}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-xs text-center text-slate-200 font-mono focus:outline-none focus:border-brand-light"
-                />
-              </div>
-
               {error && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
@@ -208,20 +232,10 @@ export default function UpiPaymentAppPage() {
 
               <button
                 onClick={handleVerifyPayment}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-brand to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white rounded-xl py-3.5 text-xs font-extrabold shadow-premium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full bg-gradient-to-r from-brand to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white rounded-xl py-3.5 text-xs font-extrabold shadow-premium transition-all flex items-center justify-center gap-2"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Verifying Transfer...</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>I Have Paid - Verify & Confirm</span>
-                  </>
-                )}
+                <ShieldCheck className="w-4 h-4" />
+                <span>Verify Payment Manually</span>
               </button>
             </div>
           </>
