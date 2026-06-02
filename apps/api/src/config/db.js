@@ -11,10 +11,11 @@ const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   }
 });
 
-// Initialize Postgres Pool
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
-  ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: env.DATABASE_URL.includes('supabase.co') || env.DATABASE_URL.includes('supabase.com')
+    ? { rejectUnauthorized: false }
+    : (env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false)
 });
 
 pool.on('error', (err) => {
