@@ -23,31 +23,44 @@ export default function ScannerPage() {
 
     const startScanner = async () => {
       try {
-        const cameras = await Html5Qrcode.getCameras();
-        if (cameras && cameras.length > 0) {
-          const cameraId = cameras[0].id; // Primary camera
-          await html5Qrcode.start(
-            cameraId,
-            {
-              fps: 10,
-              qrbox: { width: 250, height: 250 },
-            },
-            (decodedText) => {
-              // Successfully read QR code
-              handleProcessToken(decodedText);
-            },
-            (errorMessage) => {
-              // Verbose scan failures (can ignore)
-            }
-          );
-        } else {
-          setScanError('No cameras found. Please use the manual input below.');
+        await html5Qrcode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          (decodedText) => {
+            // Successfully read QR code
+            handleProcessToken(decodedText);
+          },
+          (errorMessage) => {
+            // Verbose scan failures (can ignore)
+          }
+        );
+      } catch (err) {
+        console.warn('Camera initiation with facingMode environment failed, attempting fallback...', err);
+        try {
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0) {
+            const cameraId = cameras[0].id;
+            await html5Qrcode.start(
+              cameraId,
+              {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+              },
+              (decodedText) => handleProcessToken(decodedText),
+              () => {}
+            );
+          } else {
+            setScanError('No cameras found. Please use the manual input below.');
+            setCameraActive(false);
+          }
+        } catch (fallbackErr) {
+          console.warn('Camera fallback failed:', fallbackErr);
+          setScanError('Camera access denied or unavailable. Please use the manual input below.');
           setCameraActive(false);
         }
-      } catch (err) {
-        console.warn('Camera initiation failed:', err);
-        setScanError('Camera access denied or unavailable. Please use the manual input below.');
-        setCameraActive(false);
       }
     };
 
@@ -127,10 +140,9 @@ export default function ScannerPage() {
           await scannerRef.current.stop();
         }
         
-        const cameras = await Html5Qrcode.getCameras();
-        if (cameras && cameras.length > 0) {
+        try {
           await scannerRef.current.start(
-            cameras[0].id,
+            { facingMode: "environment" },
             {
               fps: 10,
               qrbox: { width: 250, height: 250 },
@@ -139,6 +151,24 @@ export default function ScannerPage() {
             () => {}
           );
           setCameraActive(true);
+        } catch (err) {
+          console.warn('Camera restart with facingMode environment failed, attempting fallback...', err);
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0) {
+            await scannerRef.current.start(
+              cameras[0].id,
+              {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+              },
+              (decodedText) => handleProcessToken(decodedText),
+              () => {}
+            );
+            setCameraActive(true);
+          } else {
+            setScanError('No cameras found.');
+            setCameraActive(false);
+          }
         }
       } catch (err) {
         setScanError('Could not restart camera.');
