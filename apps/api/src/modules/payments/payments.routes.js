@@ -770,4 +770,38 @@ router.post('/payment/mock-complete', requireAuth, asyncHandler(async (req, res,
   }
 }));
 
+// 9. GET /api/payment/details/:orderId - Retrieve details of any transaction
+router.get('/payment/details/:orderId', requireAuth, asyncHandler(async (req, res, next) => {
+  const { orderId } = req.params;
+  
+  const txnRes = await pool.query(
+    `SELECT t.*, s.name as shop_name, s.earn_points_per_100, s.redeem_points_per_rupee 
+     FROM public.transactions t
+     JOIN public.shops s ON s.id = t.shop_id
+     WHERE t.order_id = $1`,
+    [orderId]
+  );
+  
+  if (txnRes.rows.length === 0) {
+    return next(new AppError('Transaction not found.', 404));
+  }
+  
+  const transaction = txnRes.rows[0];
+  
+  // Verify permissions: transaction must belong to current customer OR current merchant (shopkeeper owner)
+  if (transaction.user_id !== req.user.id) {
+    const shopRes = await pool.query('SELECT owner_id FROM public.shops WHERE id = $1', [transaction.shop_id]);
+    if (shopRes.rows.length === 0 || shopRes.rows[0].owner_id !== req.user.id) {
+      return next(new AppError('You are not authorized to view this transaction.', 403));
+    }
+  }
+  
+  res.status(200).json({
+    status: 'success',
+    data: {
+      transaction
+    }
+  });
+}));
+
 module.exports = router;

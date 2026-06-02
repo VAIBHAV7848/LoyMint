@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/apiClient';
 import { ChevronLeft, Gift, ShieldCheck, CreditCard, Sparkles, X, CheckCircle } from 'lucide-react';
@@ -8,6 +8,7 @@ import BottomNav from '../../components/ui/BottomNav';
 export default function PaymentPreviewPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, checkAuth } = useAuthStore();
 
   const [order, setOrder] = useState(null);
@@ -17,10 +18,6 @@ export default function PaymentPreviewPage() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
   
-  // Simulator State
-  const [showSimulator, setShowSimulator] = useState(false);
-  const [simulatorOrderId, setSimulatorOrderId] = useState('');
-  
   // Success Screen State
   const [successTxn, setSuccessTxn] = useState(null);
 
@@ -28,8 +25,17 @@ export default function PaymentPreviewPage() {
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
-        // Scanners fetch details by sending token or orderId. Let's send the token mock or load details directly
-        // We can call preview with applyRewards=false first to get rates
+        
+        // Check if redirecting back after successful UPI payment
+        const statusParam = searchParams.get('status');
+        if (statusParam === 'success') {
+          const txnRes = await api.payments.getTransactionDetails(orderId);
+          setSuccessTxn(txnRes.data.transaction);
+          await checkAuth(); // refresh wallet
+          setLoading(false);
+          return;
+        }
+
         const previewRes = await api.payments.getRewardPreview(orderId, false);
         setCalculation(previewRes.data);
         
@@ -82,36 +88,13 @@ export default function PaymentPreviewPage() {
       } else {
         // UPI Portion exists (Normal or Partial Checkout)
         // Call backend to reserve points and get Razorpay order parameters
-        const res = await api.payments.createOrder(orderId, calculation.pointsToRedeem);
-        const { razorpayOrderId } = res.data;
+        await api.payments.createOrder(orderId, calculation.pointsToRedeem);
         
-        // Open Simulator UI Overlay
-        setSimulatorOrderId(orderId);
-        setShowSimulator(true);
+        // Redirect browser to our simulated UPI Payment App
+        navigate(`/customer/upi-payment-app?orderId=${orderId}&amount=${calculation.remainingUpi}&shopName=${encodeURIComponent(order.shopName)}&points=${calculation.pointsToRedeem}`);
       }
     } catch (err) {
       setError(err.message || 'Payment initiation failed.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleSimulatePaymentOutcome = async (success) => {
-    setProcessing(true);
-    setShowSimulator(false);
-    
-    try {
-      // Call mock-complete endpoint
-      const res = await api.payments.completeMockPayment(simulatorOrderId, success);
-      
-      if (success) {
-        setSuccessTxn(res.data.transaction);
-        await checkAuth(); // refresh points
-      } else {
-        setError('UPI payment was declined/failed. Please try again.');
-      }
-    } catch (err) {
-      setError(err.message || 'Simulator completion failed.');
     } finally {
       setProcessing(false);
     }
@@ -258,62 +241,6 @@ export default function PaymentPreviewPage() {
         </button>
 
       </div>
-
-      {/* MOCK RAZORPAY UPI SIMULATOR POPUP OVERLAY */}
-      {showSimulator && (
-        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="glass-card rounded-3xl border border-slate-800 w-full max-w-[340px] p-6 shadow-2xl space-y-6">
-            
-            {/* Header */}
-            <div className="flex justify-between items-center pb-2 border-b border-slate-850">
-              <div className="flex items-center gap-2 text-brand-light">
-                <CreditCard className="w-5 h-5" />
-                <span className="text-xs uppercase font-extrabold tracking-widest">Razorpay Simulator</span>
-              </div>
-              <button 
-                onClick={() => setShowSimulator(false)} 
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Simulated Math */}
-            <div className="text-center space-y-1">
-              <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">UPI Payment Amount</span>
-              <h3 className="text-3xl font-extrabold text-white">₹{calculation?.remainingUpi}</h3>
-              <p className="text-[10px] text-slate-500">Order ID: {simulatorOrderId}</p>
-            </div>
-
-            {/* Instruction */}
-            <p className="text-xs text-slate-400 text-center leading-relaxed">
-              This sandbox simulates the Razorpay UPI payment sheet completion. Select an outcome below to test the points update.
-            </p>
-
-            {/* Decision Buttons */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                onClick={() => handleSimulatePaymentOutcome(false)}
-                className="py-3 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-bold transition-all"
-              >
-                Decline / Fail
-              </button>
-              <button
-                onClick={() => handleSimulatePaymentOutcome(true)}
-                className="py-3 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Authorize UPI
-              </button>
-            </div>
-
-            <div className="text-center text-[9px] text-slate-600">
-              Secure sandbox • No real cash moved
-            </div>
-
-          </div>
-        </div>
-      )}
 
       <BottomNav />
     </div>

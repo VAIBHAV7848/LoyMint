@@ -13,6 +13,7 @@ import ScannerPage from './routes/customer/ScannerPage';
 import PaymentPreviewPage from './routes/customer/PaymentPreviewPage';
 import RewardsPage from './routes/customer/RewardsPage';
 import ProfilePage from './routes/customer/ProfilePage';
+import UpiPaymentAppPage from './routes/customer/UpiPaymentAppPage';
 
 // Merchant pages
 import MerchantDashboardPage from './routes/merchant/MerchantDashboardPage';
@@ -115,6 +116,16 @@ export default function App() {
             <AuthRequired>
               <RoleRequired allowedRole="customer">
                 <PaymentPreviewPage />
+              </RoleRequired>
+            </AuthRequired>
+          }
+        />
+        <Route
+          path="/customer/upi-payment-app"
+          element={
+            <AuthRequired>
+              <RoleRequired allowedRole="customer">
+                <UpiPaymentAppPage />
               </RoleRequired>
             </AuthRequired>
           }

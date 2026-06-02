@@ -88,7 +88,8 @@ export const api = {
     payWithRewards: (orderId, pointsToRedeem) => 
       apiClient.post('/payment/reward-only', { orderId, pointsToRedeem }),
     completeMockPayment: (orderId, success) => 
-      apiClient.post('/payment/mock-complete', { orderId, success })
+      apiClient.post('/payment/mock-complete', { orderId, success }),
+    getTransactionDetails: (orderId) => apiClient.get(`/payment/details/${orderId}`)
   },
 
   // User Actions Modules
