@@ -113,8 +113,11 @@ router.post('/merchant/bills/generate-qr', requireAuth, requireRole('shopkeeper'
   // Generate signed QR JWT token
   const qrToken = generateQrToken(orderId, shop.id, amount);
 
-  // Generate QR code data URL image
-  const qrDataUrl = await QRCode.toDataURL(qrToken);
+  // Generate full redirect URL for scanning
+  const qrUrl = `${env.CLIENT_ORIGIN}/customer/scan?token=${qrToken}`;
+
+  // Generate QR code data URL image from the redirect URL
+  const qrDataUrl = await QRCode.toDataURL(qrUrl);
 
   res.status(201).json({
     status: 'success',

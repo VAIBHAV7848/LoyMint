@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '../../services/apiClient';
 import { ChevronLeft, QrCode, AlertTriangle, RefreshCw, Send, Check } from 'lucide-react';
@@ -7,6 +7,7 @@ import BottomNav from '../../components/ui/BottomNav';
 
 export default function ScannerPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const scannerRef = useRef(null);
 
   const [scanError, setScanError] = useState('');
@@ -60,6 +61,14 @@ export default function ScannerPage() {
     };
   }, []);
 
+  // Run auto-process if token is present in URL query string
+  useEffect(() => {
+    const tokenParam = searchParams.get('token');
+    if (tokenParam) {
+      handleProcessToken(tokenParam);
+    }
+  }, [searchParams]);
+
   const handleProcessToken = async (token) => {
     if (!token) return;
     setLoading(true);
@@ -75,9 +84,21 @@ export default function ScannerPage() {
       }
     }
 
+    // Clean token if it is a full URL containing token parameter
+    let cleanToken = token;
+    if (token.includes('token=')) {
+      try {
+        const url = new URL(token);
+        cleanToken = url.searchParams.get('token') || token;
+      } catch (e) {
+        const match = token.match(/token=([^&]+)/);
+        if (match) cleanToken = match[1];
+      }
+    }
+
     try {
       // API call to initiate transaction
-      const res = await api.payments.initiateFromQr(token);
+      const res = await api.payments.initiateFromQr(cleanToken);
       const { orderId } = res.data;
       
       // Navigate to payment preview page

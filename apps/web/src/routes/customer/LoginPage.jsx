@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/apiClient';
 import { ShieldCheck, Mail, Lock, Sparkles, User, HelpCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAuthStore((state) => state.login);
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
@@ -50,11 +51,8 @@ export default function LoginPage() {
       }
 
       // Navigate to correct dashboard
-      if (role === 'shopkeeper') {
-        navigate('/merchant/dashboard');
-      } else {
-        navigate('/customer/dashboard');
-      }
+      const from = location.state?.from || (role === 'shopkeeper' ? '/merchant/dashboard' : '/customer/dashboard');
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || 'Login failed.');
     } finally {

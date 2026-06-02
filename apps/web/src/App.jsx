@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 
 // Common pages
@@ -23,6 +23,7 @@ import OffersManagerPage from './routes/merchant/OffersManagerPage';
 // Route guards
 function AuthRequired({ children }) {
   const { isAuthenticated, loading } = useAuthStore();
+  const location = useLocation();
   
   if (loading) {
     return (
@@ -32,7 +33,7 @@ function AuthRequired({ children }) {
     );
   }
   
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  return isAuthenticated ? children : <Navigate to="/login" state={{ from: location }} replace />;
 }
 
 function RoleRequired({ children, allowedRole }) {
