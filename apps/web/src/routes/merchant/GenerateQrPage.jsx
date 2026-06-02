@@ -60,9 +60,12 @@ export default function GenerateQrPage() {
     return () => clearTimeout(timerRef.current);
   }, [timeLeft, qrCodeData]);
 
-  // Set up SSE Stream connection to watch status updates in real-time
+  // Set up SSE Stream connection to watch status updates in real-time with polling fallback
   useEffect(() => {
     if (!qrCodeData?.orderId) return;
+
+    let sseInstance = null;
+    let pollInterval = null;
 
     // Fetch shop details to get the current shopId
     const loadShopAndSSE = async () => {
@@ -72,40 +75,72 @@ export default function GenerateQrPage() {
         
         if (!myShop) return;
 
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-        const eventSource = new EventSource(`${API_BASE_URL}/payment/stream?shopId=${myShop.id}`);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+          (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:8080/api'
+            : '/api');
 
-        eventSource.onmessage = (event) => {
+        try {
+          sseInstance = new EventSource(`${API_BASE_URL}/payment/stream?shopId=${myShop.id}`);
+
+          sseInstance.onmessage = (event) => {
+            try {
+              const transaction = JSON.parse(event.data);
+              if (transaction.order_id === qrCodeData.orderId) {
+                console.log('Realtime payment update received for current active QR:', transaction);
+                
+                if (['success', 'partial_paid', 'reward_paid'].includes(transaction.status)) {
+                  setTxnStatus('success');
+                  setTimeLeft(0); // Stop countdown
+                  if (pollInterval) clearInterval(pollInterval);
+                } else if (transaction.status === 'failed') {
+                  setError('Customer payment was declined.');
+                  if (pollInterval) clearInterval(pollInterval);
+                }
+              }
+            } catch (err) {
+              console.error('Error parsing SSE event in QR page:', err);
+            }
+          };
+
+          sseInstance.onerror = (err) => {
+            console.warn('SSE error in QR page, closing connection and falling back to polling.', err);
+            if (sseInstance) sseInstance.close();
+          };
+        } catch (e) {
+          console.warn('Failed to initialize SSE on QR page, relying on polling fallback.', e);
+        }
+
+        // Lightweight 3-second polling fallback to check transaction status directly from database
+        pollInterval = setInterval(async () => {
           try {
-            const transaction = JSON.parse(event.data);
-            if (transaction.order_id === qrCodeData.orderId) {
-              console.log('Realtime payment update received for current active QR:', transaction);
-              
-              if (['success', 'partial_paid', 'reward_paid'].includes(transaction.status)) {
+            const dashRes = await api.merchant.getDashboard();
+            const thisTxn = dashRes.data.transactions.find(t => t.order_id === qrCodeData.orderId);
+            if (thisTxn) {
+              if (['success', 'partial_paid', 'reward_paid'].includes(thisTxn.status)) {
                 setTxnStatus('success');
-                setTimeLeft(0); // Stop countdown
-              } else if (transaction.status === 'failed') {
+                setTimeLeft(0);
+                clearInterval(pollInterval);
+              } else if (thisTxn.status === 'failed') {
                 setError('Customer payment was declined.');
+                clearInterval(pollInterval);
               }
             }
           } catch (err) {
-            console.error('Error parsing SSE event in QR page:', err);
+            console.debug('QR page polling fallback failed:', err);
           }
-        };
+        }, 3000);
 
-        return eventSource;
       } catch (err) {
         console.error(err);
       }
     };
 
-    let sseInstance = null;
-    loadShopAndSSE().then(instance => {
-      sseInstance = instance;
-    });
+    loadShopAndSSE();
 
     return () => {
       if (sseInstance) sseInstance.close();
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [qrCodeData?.orderId]);
 

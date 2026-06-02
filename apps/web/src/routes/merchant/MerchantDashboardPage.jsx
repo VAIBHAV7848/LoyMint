@@ -48,43 +48,69 @@ export default function MerchantDashboardPage() {
     fetchDashboardData();
   }, []);
 
-  // Set up SSE Stream connection for real-time transactions
+  // Set up SSE Stream connection for real-time transactions with a polling fallback
   useEffect(() => {
     if (!shop?.id) return;
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-    const eventSource = new EventSource(`${API_BASE_URL}/payment/stream?shopId=${shop.id}`);
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+      (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:8080/api'
+        : '/api');
 
-    eventSource.onmessage = (event) => {
-      try {
-        const transaction = JSON.parse(event.data);
-        if (transaction.connected) return; // ignore keepalive connection ping
-        
-        console.log('SSE Realtime payment update received:', transaction);
+    let eventSource = null;
+    let pollInterval = null;
 
-        // 1. Show custom premium animated floating notification popup
-        if (['success', 'partial_paid', 'reward_paid'].includes(transaction.status)) {
-          setNotification(transaction);
-          setTimeout(() => setNotification(null), 5000); // clear after 5s
+    try {
+      eventSource = new EventSource(`${API_BASE_URL}/payment/stream?shopId=${shop.id}`);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const transaction = JSON.parse(event.data);
+          if (transaction.connected) return; // ignore keepalive connection ping
+          
+          console.log('SSE Realtime payment update received:', transaction);
+
+          // 1. Show custom premium animated floating notification popup
+          if (['success', 'partial_paid', 'reward_paid'].includes(transaction.status)) {
+            setNotification(transaction);
+            setTimeout(() => setNotification(null), 5000); // clear after 5s
+          }
+
+          // 2. Refresh metrics and transactions list instantly
+          api.merchant.getDashboard().then(dashRes => {
+            setMetrics(dashRes.data.metrics);
+            setTransactions(dashRes.data.transactions || []);
+          });
+        } catch (err) {
+          console.error('Error parsing SSE event data:', err);
         }
+      };
 
-        // 2. Refresh metrics and transactions list instantly
-        api.merchant.getDashboard().then(dashRes => {
-          setMetrics(dashRes.data.metrics);
-          setTransactions(dashRes.data.transactions || []);
+      eventSource.onerror = (err) => {
+        console.warn('SSE EventSource error, closing connection and falling back to polling.', err);
+        if (eventSource) eventSource.close();
+      };
+    } catch (e) {
+      console.warn('Failed to initialize SSE, falling back to polling.', e);
+    }
+
+    // Lightweight 5-second polling fallback to support Vercel Serverless environment
+    pollInterval = setInterval(() => {
+      api.merchant.getDashboard().then(dashRes => {
+        setMetrics(prev => {
+          const stats = dashRes.data.metrics;
+          if (JSON.stringify(prev) !== JSON.stringify(stats)) {
+            setTransactions(dashRes.data.transactions || []);
+            return stats;
+          }
+          return prev;
         });
-      } catch (err) {
-        console.error('Error parsing SSE event data:', err);
-      }
-    };
-
-    eventSource.onerror = (err) => {
-      console.warn('SSE EventSource error, closing connection.', err);
-      eventSource.close();
-    };
+      }).catch(err => console.debug('Dashboard polling fallback failed:', err));
+    }, 5000);
 
     return () => {
-      eventSource.close();
+      if (eventSource) eventSource.close();
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [shop?.id]);
 

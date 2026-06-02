@@ -272,7 +272,7 @@ router.post('/payment/reward-preview', requireAuth, asyncHandler(async (req, res
 }));
 
 // 5. POST /api/payment/create-order - Initiate payment (Normal UPI or Partial)
-router.post('/api/payment/create-order', requireAuth, asyncHandler(async (req, res, next) => {
+router.post('/payment/create-order', requireAuth, asyncHandler(async (req, res, next) => {
   const { orderId, rewardPointsToRedeem } = req.body;
 
   if (!orderId || rewardPointsToRedeem === undefined) {
@@ -377,7 +377,7 @@ router.post('/api/payment/create-order', requireAuth, asyncHandler(async (req, r
 }));
 
 // 6. POST /api/payment/reward-only - Process 100% points-paid transaction (No Razorpay needed)
-router.post('/api/payment/reward-only', requireAuth, asyncHandler(async (req, res, next) => {
+router.post('/payment/reward-only', requireAuth, asyncHandler(async (req, res, next) => {
   const { orderId, pointsToRedeem } = req.body;
 
   if (!orderId || !pointsToRedeem) {
