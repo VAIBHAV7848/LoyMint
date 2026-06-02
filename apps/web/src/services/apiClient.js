@@ -41,39 +41,26 @@ export const api = {
       apiClient.post('/auth/profile/complete', { name, role, referralCode }),
     
     // Local Simulator Login / Signup
-    loginMock: (email, role) => {
-      // In mock mode, we generate a mock token and store it
+    loginMock: async (email, role) => {
       const isMerchant = role === 'shopkeeper';
-      const userId = isMerchant 
-        ? 'd4444444-4444-4444-4444-444444444444' 
-        : 'c3333333-3333-3333-3333-333333333333';
-      const token = `mock-token-${isMerchant ? 'merchant' : 'customer'}-${userId}`;
+      const token = `mock-token-${isMerchant ? 'merchant' : 'customer'}-${email}`;
       
       localStorage.setItem('loymint_token', token);
-      localStorage.setItem('loymint_user', JSON.stringify({
-        id: userId,
-        email,
-        role,
-        name: isMerchant ? 'Vikram Seth' : 'Rohan Sharma',
-        pointsBalance: isMerchant ? 0 : 250,
-        referralCode: isMerchant ? 'VIKRAM99' : 'ROHAN123',
-        profileCompleted: true
-      }));
       
-      return Promise.resolve({
-        status: 'success',
-        data: {
-          user: {
-            id: userId,
-            email,
-            role,
-            name: isMerchant ? 'Vikram Seth' : 'Rohan Sharma',
-            pointsBalance: isMerchant ? 0 : 250,
-            referralCode: isMerchant ? 'VIKRAM99' : 'ROHAN123',
-            profileCompleted: true
-          }
-        }
-      });
+      try {
+        const meRes = await apiClient.get('/auth/me');
+        const user = meRes.data.user;
+        
+        localStorage.setItem('loymint_user', JSON.stringify(user));
+        return {
+          status: 'success',
+          data: { user }
+        };
+      } catch (err) {
+        localStorage.removeItem('loymint_token');
+        localStorage.removeItem('loymint_user');
+        throw err;
+      }
     },
     logout: () => {
       localStorage.removeItem('loymint_token');

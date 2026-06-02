@@ -24,20 +24,26 @@ const requireAuth = asyncHandler(async (req, res, next) => {
   // 2. Verify token
   if (token.startsWith('mock-token-')) {
     // Local testing fallback
-    // Format: mock-token-<role>-<id>
+    // Format: mock-token-<role>-<email_or_id>
     const parts = token.split('-');
     mockUserRole = parts[2] === 'merchant' ? 'shopkeeper' : 'customer';
-    const mockId = parts[3] || '11111111-1111-1111-1111-111111111111';
-    
-    // Assign uuid based on mock token
-    if (mockUserRole === 'shopkeeper') {
-      authUserId = 'b2222222-2222-2222-2222-222222222222';
-      email = 'merchant@loymint.com';
-      mockName = 'Vikram Seth';
+    const identifier = parts.slice(3).join('-');
+
+    if (identifier.includes('@')) {
+      email = identifier;
+      authUserId = 'mock-auth-id-' + identifier.replace(/[^a-zA-Z0-9]/g, '');
+      mockName = identifier.split('@')[0];
     } else {
-      authUserId = 'a1111111-1111-1111-1111-111111111111';
-      email = 'customer@loymint.com';
-      mockName = 'Rohan Sharma';
+      // Default mock users
+      if (mockUserRole === 'shopkeeper') {
+        authUserId = 'b2222222-2222-2222-2222-222222222222';
+        email = 'merchant@loymint.com';
+        mockName = 'Vikram Seth';
+      } else {
+        authUserId = 'a1111111-1111-1111-1111-111111111111';
+        email = 'customer@loymint.com';
+        mockName = 'Rohan Sharma';
+      }
     }
   } else {
     // Real Supabase validation
@@ -53,21 +59,34 @@ const requireAuth = asyncHandler(async (req, res, next) => {
   }
 
   // 3. Fetch public user profile
-  const userResult = await pool.query(
-    'SELECT * FROM public.users WHERE auth_user_id = $1',
-    [authUserId]
-  );
+  let userResult;
+  if (token.startsWith('mock-token-') && email) {
+    userResult = await pool.query(
+      'SELECT * FROM public.users WHERE email = $1',
+      [email]
+    );
+  } else {
+    userResult = await pool.query(
+      'SELECT * FROM public.users WHERE auth_user_id = $1',
+      [authUserId]
+    );
+  }
 
   if (userResult.rows.length === 0) {
-    // Profile not created yet - allow next route to complete it if it is the /profile/complete endpoint
-    req.user = {
-      authUserId,
-      email,
-      profileCompleted: false,
-      role: mockUserRole, // Fallback for mock signup
-      name: mockName
-    };
-    return next();
+    // Only allow proceeding if the request is to complete the profile
+    const currentPath = req.baseUrl + req.path;
+    if (req.path === '/profile/complete' || currentPath === '/api/auth/profile/complete') {
+      req.user = {
+        authUserId,
+        email,
+        profileCompleted: false,
+        role: mockUserRole,
+        name: mockName
+      };
+      return next();
+    }
+    
+    return next(new AppError('Unauthorized: Your user profile does not exist in the database.', 401));
   }
 
   const dbUser = userResult.rows[0];

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { api } from '../../services/apiClient';
 import { ShieldCheck, Mail, Lock, Sparkles, User, HelpCircle } from 'lucide-react';
 
 export default function LoginPage() {
@@ -30,17 +31,20 @@ export default function LoginPage() {
 
     try {
       if (isRegistering) {
-        // Mock complete profile flow
-        // First mock login, then mock complete profile
-        await login(email || 'customer@loymint.com', role);
-        // Set user profile completion details in localStorage
-        const localUser = JSON.parse(localStorage.getItem('loymint_user'));
-        localUser.name = name;
-        localUser.referralCode = name.replace(/[^a-zA-Z]/g, '').substring(0, 5).toUpperCase() + '100';
-        localStorage.setItem('loymint_user', JSON.stringify(localUser));
+        // Register flow: Set mock token for registration request, then call completeProfile
+        const targetEmail = email || 'customer@loymint.com';
+        const token = `mock-token-${role === 'shopkeeper' ? 'merchant' : 'customer'}-${targetEmail}`;
+        localStorage.setItem('loymint_token', token);
+
+        // Call backend completeProfile to insert user record into Postgres DB
+        const profileRes = await api.auth.completeProfile(name, role, referralCode);
+        const registeredUser = profileRes.data.user;
+        
+        // Cache user details and sync store state
+        localStorage.setItem('loymint_user', JSON.stringify(registeredUser));
         await checkAuth();
       } else {
-        // Standard Mock Login
+        // Standard Login: hit API to verify email exists in the database
         const defaultEmail = role === 'shopkeeper' ? 'merchant@loymint.com' : 'customer@loymint.com';
         await login(email || defaultEmail, role);
       }
