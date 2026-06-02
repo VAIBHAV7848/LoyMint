@@ -113,8 +113,18 @@ router.post('/merchant/bills/generate-qr', requireAuth, requireRole('shopkeeper'
   // Generate signed QR JWT token
   const qrToken = generateQrToken(orderId, shop.id, amount);
 
+  // Determine client origin dynamically
+  let clientOrigin = env.CLIENT_ORIGIN;
+  if (clientOrigin === 'http://localhost:5173') {
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+      const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+      clientOrigin = `${protocol}://${host}`;
+    }
+  }
+
   // Generate full redirect URL for scanning
-  const qrUrl = `${env.CLIENT_ORIGIN}/customer/scan?token=${qrToken}`;
+  const qrUrl = `${clientOrigin}/customer/scan?token=${qrToken}`;
 
   // Generate QR code data URL image from the redirect URL
   const qrDataUrl = await QRCode.toDataURL(qrUrl);
