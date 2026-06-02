@@ -11,11 +11,15 @@ const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   }
 });
 
+// Strip query parameters like ?sslmode=require to avoid conflicts with our explicit ssl configuration in pg
+const connectionString = env.DATABASE_URL.split('?')[0];
+const isSupabase = env.DATABASE_URL.includes('supabase.co') || env.DATABASE_URL.includes('supabase.com');
+
 const pool = new Pool({
-  connectionString: env.DATABASE_URL,
-  ssl: env.DATABASE_URL.includes('supabase.co') || env.DATABASE_URL.includes('supabase.com')
+  connectionString,
+  ssl: isSupabase || env.NODE_ENV === 'production'
     ? { rejectUnauthorized: false }
-    : (env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false)
+    : false
 });
 
 pool.on('error', (err) => {
