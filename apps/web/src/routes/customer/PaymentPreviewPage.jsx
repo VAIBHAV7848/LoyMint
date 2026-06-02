@@ -105,94 +105,77 @@ export default function PaymentPreviewPage() {
 
   if (successTxn) {
     return (
-      <div className="mobile-viewport min-h-screen bg-slate-950 text-white p-6 flex flex-col justify-between items-center text-center font-sans">
-        <div className="flex-1 w-full flex flex-col justify-center items-center py-6 space-y-6">
-          {/* Animated Success Badge */}
-          <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl animate-pulse" />
-            <div className="w-20 h-20 rounded-full bg-slate-900 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 relative z-10 shadow-lg shadow-emerald-500/10">
-              <CheckCircle className="w-12 h-12 stroke-[2.5] animate-bounce" />
-            </div>
-          </div>
-          
-          <div className="space-y-1">
-            <h2 className="text-2xl font-extrabold text-white tracking-tight">Payment Successful!</h2>
-            <p className="text-xs text-slate-400 font-medium">
-              Receipt ID: <span className="font-mono text-slate-300">{successTxn.order_id}</span>
-            </p>
-          </div>
-
-          {/* Points Earned Banner */}
-          {successTxn.reward_points_earned > 0 && (
-            <div className="w-full max-w-[320px] bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex flex-col items-center space-y-1.5 shadow-inner">
-              <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold uppercase tracking-widest">
-                <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" style={{ animationDuration: '3s' }} />
-                <span>Rewards Earned</span>
-              </div>
-              <h3 className="text-3xl font-black text-emerald-400 font-mono tracking-tight">
-                +{successTxn.reward_points_earned} PTS
-              </h3>
-              <p className="text-[10px] text-emerald-500/80 font-medium">
-                Added directly to your LoyMint wallet
-              </p>
-            </div>
-          )}
-
-          {/* Updated Balance Pill */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-slate-900 border border-slate-800 rounded-full text-xs text-slate-300 font-semibold">
-            <Gift className="w-3.5 h-3.5 text-brand" />
-            <span>New Wallet Balance:</span>
-            <span className="text-brand-light font-extrabold font-mono">{user?.pointsBalance || 0} PTS</span>
-          </div>
-
-          {/* Detailed Bill Info Card */}
-          <div className="bg-slate-900/60 border border-slate-850 rounded-2xl p-5 w-full max-w-[320px] text-xs text-slate-400 space-y-3.5 shadow-2xl">
-            <div className="flex justify-between items-center pb-2.5 border-b border-slate-800/60">
-              <span className="font-semibold">Paid To Merchant</span>
-              <span className="font-extrabold text-white text-sm">{successTxn.shop_name || 'Merchant'}</span>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span>Paid Amount</span>
-              <span className="font-bold text-white text-sm">₹{parseFloat(successTxn.amount || 0).toFixed(2)}</span>
-            </div>
-
-            {successTxn.reward_points_used > 0 && (
-              <div className="flex justify-between items-center">
-                <span>LoyPoints Redeemed</span>
-                <span className="font-bold text-brand-light">-{successTxn.reward_points_used} PTS</span>
-              </div>
-            )}
-
-            <div className="flex justify-between items-center">
-              <span>Settlement Suffix</span>
-              <span className="font-mono text-slate-300">
-                {successTxn.status === 'reward_paid' ? '100% Points Redeemed' : 'Points + Direct UPI'}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center pt-2.5 border-t border-slate-800/60 text-[10px] text-slate-500">
-              <span>Transaction Time</span>
-              <span>{new Date(successTxn.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-          </div>
+      <div className="mobile-viewport min-h-screen bg-slate-950 text-white p-6 flex flex-col justify-between items-center text-center font-sans relative overflow-hidden">
+        {/* Background page details (faded layout behind modal) */}
+        <div className="w-full opacity-10 pointer-events-none filter blur-[2px] flex flex-col space-y-6 flex-1 justify-center items-center">
+          <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center" />
+          <div className="h-6 w-32 bg-slate-900 rounded-lg" />
+          <div className="h-20 w-full bg-slate-900 rounded-2xl" />
         </div>
 
-        {/* Dynamic Action Buttons */}
-        <div className="w-full max-w-[320px] space-y-2.5 pt-4">
-          <button
-            onClick={() => navigate('/customer/dashboard')}
-            className="w-full bg-gradient-to-r from-brand to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white rounded-xl py-3.5 text-xs font-extrabold shadow-premium transition-all"
-          >
-            Back to Dashboard
-          </button>
-          
-          <button
-            onClick={() => navigate('/customer/rewards')}
-            className="w-full bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-350 py-3 rounded-xl text-xs font-bold transition-all"
-          >
-            View Points Ledger
-          </button>
+        {/* Real-world Pop-up Modal Overlay */}
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-6 z-50">
+          <div className="w-full max-w-[320px] bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-6 relative overflow-hidden animate-slide-up">
+            {/* Ambient glows */}
+            <div className="absolute -top-12 -left-12 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -right-12 w-28 h-28 bg-violet-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Pulsing check circle */}
+            <div className="flex justify-center pt-2">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-emerald-500/30 scale-150 animate-ping opacity-70" style={{ animationDuration: '2s' }} />
+                <div className="absolute inset-0 rounded-full bg-emerald-500/20 scale-125 animate-pulse" />
+                <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center text-white relative z-10 shadow-lg shadow-emerald-500/20">
+                  <CheckCircle className="w-9 h-9 stroke-[3]" />
+                </div>
+              </div>
+            </div>
+
+            {/* Success Headers */}
+            <div className="space-y-1">
+              <h3 className="text-lg font-extrabold text-white">Payment Successful</h3>
+              <p className="text-xs text-slate-400">Paid to <span className="text-slate-200 font-bold">{successTxn.shop_name || 'Merchant'}</span></p>
+            </div>
+
+            {/* Amount and Points */}
+            <div className="bg-slate-950/80 border border-slate-850/60 rounded-2xl p-4 space-y-3 shadow-inner">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Amount Paid</span>
+                <span className="text-white font-extrabold font-mono text-sm">₹{parseFloat(successTxn.amount || 0).toFixed(2)}</span>
+              </div>
+              
+              {successTxn.reward_points_earned > 0 && (
+                <div className="flex justify-between items-center pt-2.5 border-t border-slate-900">
+                  <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                    Points Earned
+                  </span>
+                  <span className="text-emerald-400 font-black font-mono">+{successTxn.reward_points_earned} PTS</span>
+                </div>
+              )}
+            </div>
+
+            {/* New Points Balance */}
+            <div className="text-[11px] text-slate-400 font-medium">
+              New Wallet Balance: <span className="text-brand-light font-extrabold font-mono">{user?.pointsBalance || 0} PTS</span>
+            </div>
+
+            {/* Action CTAs */}
+            <div className="space-y-2 pt-2">
+              <button
+                onClick={() => navigate('/customer/dashboard')}
+                className="w-full bg-gradient-to-r from-brand to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white rounded-xl py-3 text-xs font-extrabold shadow-premium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>Go to Dashboard</span>
+              </button>
+              <button
+                onClick={() => navigate('/customer/rewards')}
+                className="w-full bg-slate-950 border border-slate-800 hover:bg-slate-850 text-slate-400 py-2.5 rounded-xl text-xs font-semibold transition-all"
+              >
+                View Points Ledger
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
