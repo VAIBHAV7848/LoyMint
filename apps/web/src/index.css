@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans antialiased overflow-x-hidden selection:bg-brand selection:text-white;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(76, 29, 149, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(30, 27, 75, 0.2) 0px, transparent 50%);
+    min-height: 100vh;
+  }
+}
+
+/* Glassmorphism Styles */
+.glass {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(30, 27, 75, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-premium {
+  background: linear-gradient(135deg, rgba(76, 29, 149, 0.3) 0%, rgba(30, 27, 75, 0.4) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(192, 132, 252, 0.15);
+}
+
+/* Bottom Navigation Floating FAB animation */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0px); }
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Mobile viewport simulator container for desktops */
+.mobile-viewport {
+  max-width: 480px;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0 auto;
+  position: relative;
+  @apply bg-slate-950 flex flex-col shadow-2xl border-x border-slate-800/40;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(107, 33, 168, 0.4);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 33, 168, 0.6);
+}
+
+/* Scanner viewport wrapper overrides */
+#reader__scan_region video {
+  border-radius: 12px;
+  object-fit: cover !important;
+}
+
+#reader {
+  border: none !important;
+}

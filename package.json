@@ -1,0 +1,20 @@
+{
+  "name": "loymint",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LoyMint - Local Rewards & QR Payments",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "build:web": "npm run build --workspace=apps/web"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
