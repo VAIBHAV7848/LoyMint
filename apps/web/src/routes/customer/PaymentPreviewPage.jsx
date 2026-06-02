@@ -105,43 +105,95 @@ export default function PaymentPreviewPage() {
 
   if (successTxn) {
     return (
-      <div className="mobile-viewport min-h-screen p-6 flex flex-col justify-between items-center text-center">
-        <div className="flex-1 flex flex-col justify-center items-center">
-          <div className="w-20 h-20 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 mb-6">
-            <CheckCircle className="w-12 h-12" />
+      <div className="mobile-viewport min-h-screen bg-slate-950 text-white p-6 flex flex-col justify-between items-center text-center font-sans">
+        <div className="flex-1 w-full flex flex-col justify-center items-center py-6 space-y-6">
+          {/* Animated Success Badge */}
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl animate-pulse" />
+            <div className="w-20 h-20 rounded-full bg-slate-900 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 relative z-10 shadow-lg shadow-emerald-500/10">
+              <CheckCircle className="w-12 h-12 stroke-[2.5] animate-bounce" />
+            </div>
           </div>
           
-          <h2 className="text-2xl font-extrabold text-white">Payment Successful!</h2>
-          <p className="text-xs text-slate-400 mt-1.5 uppercase tracking-wider font-semibold">
-            Receipt: {successTxn.order_id}
-          </p>
+          <div className="space-y-1">
+            <h2 className="text-2xl font-extrabold text-white tracking-tight">Payment Successful!</h2>
+            <p className="text-xs text-slate-400 font-medium">
+              Receipt ID: <span className="font-mono text-slate-300">{successTxn.order_id}</span>
+            </p>
+          </div>
 
-          <div className="glass-card rounded-2xl p-5 border border-slate-800/40 w-full max-w-[320px] mt-8 text-sm text-slate-300 space-y-3">
-            <div className="flex justify-between">
-              <span>Paid Amount</span>
-              <span className="font-bold text-white">₹{successTxn.amount}</span>
+          {/* Points Earned Banner */}
+          {successTxn.reward_points_earned > 0 && (
+            <div className="w-full max-w-[320px] bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex flex-col items-center space-y-1.5 shadow-inner">
+              <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold uppercase tracking-widest">
+                <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" style={{ animationDuration: '3s' }} />
+                <span>Rewards Earned</span>
+              </div>
+              <h3 className="text-3xl font-black text-emerald-400 font-mono tracking-tight">
+                +{successTxn.reward_points_earned} PTS
+              </h3>
+              <p className="text-[10px] text-emerald-500/80 font-medium">
+                Added directly to your LoyMint wallet
+              </p>
             </div>
+          )}
+
+          {/* Updated Balance Pill */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-slate-900 border border-slate-800 rounded-full text-xs text-slate-300 font-semibold">
+            <Gift className="w-3.5 h-3.5 text-brand" />
+            <span>New Wallet Balance:</span>
+            <span className="text-brand-light font-extrabold font-mono">{user?.pointsBalance || 0} PTS</span>
+          </div>
+
+          {/* Detailed Bill Info Card */}
+          <div className="bg-slate-900/60 border border-slate-850 rounded-2xl p-5 w-full max-w-[320px] text-xs text-slate-400 space-y-3.5 shadow-2xl">
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-800/60">
+              <span className="font-semibold">Paid To Merchant</span>
+              <span className="font-extrabold text-white text-sm">{successTxn.shop_name || 'Merchant'}</span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span>Paid Amount</span>
+              <span className="font-bold text-white text-sm">₹{parseFloat(successTxn.amount || 0).toFixed(2)}</span>
+            </div>
+
             {successTxn.reward_points_used > 0 && (
-              <div className="flex justify-between text-brand-light">
-                <span>Points Redeemed</span>
-                <span>-{successTxn.reward_points_used} PTS</span>
+              <div className="flex justify-between items-center">
+                <span>LoyPoints Redeemed</span>
+                <span className="font-bold text-brand-light">-{successTxn.reward_points_used} PTS</span>
               </div>
             )}
-            <div className="border-t border-slate-800/60 pt-3 flex justify-between text-xs text-slate-400">
-              <span>Payment Mode</span>
-              <span>
-                {successTxn.status === 'reward_paid' ? '100% Points' : 'Points + UPI'}
+
+            <div className="flex justify-between items-center">
+              <span>Settlement Suffix</span>
+              <span className="font-mono text-slate-300">
+                {successTxn.status === 'reward_paid' ? '100% Points Redeemed' : 'Points + Direct UPI'}
               </span>
+            </div>
+
+            <div className="flex justify-between items-center pt-2.5 border-t border-slate-800/60 text-[10px] text-slate-500">
+              <span>Transaction Time</span>
+              <span>{new Date(successTxn.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
           </div>
         </div>
 
-        <button
-          onClick={() => navigate('/customer/dashboard')}
-          className="w-full bg-brand text-white rounded-xl py-3.5 text-sm font-bold shadow-premium"
-        >
-          Back to Home
-        </button>
+        {/* Dynamic Action Buttons */}
+        <div className="w-full max-w-[320px] space-y-2.5 pt-4">
+          <button
+            onClick={() => navigate('/customer/dashboard')}
+            className="w-full bg-gradient-to-r from-brand to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white rounded-xl py-3.5 text-xs font-extrabold shadow-premium transition-all"
+          >
+            Back to Dashboard
+          </button>
+          
+          <button
+            onClick={() => navigate('/customer/rewards')}
+            className="w-full bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-350 py-3 rounded-xl text-xs font-bold transition-all"
+          >
+            View Points Ledger
+          </button>
+        </div>
       </div>
     );
   }

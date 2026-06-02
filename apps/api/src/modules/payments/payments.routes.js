@@ -779,7 +779,11 @@ router.get('/payment/details/:orderId', requireAuth, asyncHandler(async (req, re
   const { orderId } = req.params;
   
   const txnRes = await pool.query(
-    `SELECT t.*, s.name as shop_name, s.earn_points_per_100, s.redeem_points_per_rupee 
+    `SELECT t.*, s.name as shop_name, s.earn_points_per_100, s.redeem_points_per_rupee,
+       COALESCE(
+         (SELECT points_change FROM public.points_log WHERE transaction_id = t.id AND reason = 'purchase'),
+         FLOOR(t.upi_paid / 100.0) * s.earn_points_per_100
+       )::integer AS reward_points_earned
      FROM public.transactions t
      JOIN public.shops s ON s.id = t.shop_id
      WHERE t.order_id = $1`,
